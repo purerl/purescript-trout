@@ -1,0 +1,14 @@
+{
+    "name": "trout",
+    "set": "erl-0.10.7",
+    "source": "https://github.com/purerl/package-sets.git",
+    "depends": [
+        "erl-jsone",
+        "uri",
+        "symbols",
+        "smolder",
+        "prelude",
+        "pathy",
+        "media-types"
+    ]
+}

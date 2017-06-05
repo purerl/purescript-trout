@@ -17,7 +17,6 @@
     "purescript-symbols": "^3.0.0",
     "purescript-uri": "^3.0.0",
     "purescript-media-types": "^3.0.0",
-    "purescript-argonaut": "^3.0.0",
     "purescript-smolder": "^7.0.0"
   },
   "devDependencies": {

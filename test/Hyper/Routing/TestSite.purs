@@ -1,7 +1,10 @@
 module Hyper.Routing.TestSite where
 
 import Prelude
-import Data.Argonaut (class EncodeJson, jsonEmptyObject, (:=), (~>))
+-- import Data.Argonaut (class EncodeJson, jsonEmptyObject, (:=), (~>))
+import Erl.Data.Jsone
+import Erl.Data.Jsone.Encode.Class
+import Erl.Data.Jsone.Encode.Combinators
 import Data.Either (Either(..))
 import Data.String (trim)
 import Hyper.Routing (type (:/), type (:<|>), type (:>), Capture, CaptureAll, Raw)
