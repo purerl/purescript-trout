@@ -1,20 +1,19 @@
-module Hyper.Routing.TestSite where
+module Type.Trout.TestSite where
 
 import Prelude
--- import Data.Argonaut (class EncodeJson, jsonEmptyObject, (:=), (~>))
 import Erl.Data.Jsone
 import Erl.Data.Jsone.Encode.Class
 import Erl.Data.Jsone.Encode.Combinators
 import Data.Either (Either(..))
 import Data.String (trim)
-import Hyper.Routing (type (:/), type (:<|>), type (:>), Capture, CaptureAll, Raw)
-import Hyper.Routing.ContentType.HTML (HTML, class EncodeHTML)
-import Hyper.Routing.ContentType.JSON (JSON)
-import Hyper.Routing.Method (Get)
-import Hyper.Routing.PathPiece (class FromPathPiece, class ToPathPiece)
 import Text.Smolder.HTML (h1)
 import Text.Smolder.Markup (text)
 import Type.Proxy (Proxy(..))
+import Type.Trout (type (:/), type (:<|>), type (:=), type (:>), Capture, CaptureAll, Raw, Resource)
+import Type.Trout.ContentType.HTML (HTML, class EncodeHTML)
+import Type.Trout.ContentType.JSON (JSON)
+import Type.Trout.Method (Get)
+import Type.Trout.PathPiece (class FromPathPiece, class ToPathPiece)
 
 data Home = Home
 
@@ -39,7 +38,7 @@ data User = User UserID
 
 instance encodeUser :: EncodeJson User where
   encodeJson (User (UserID userId)) =
-    "userId" := userId
+    assoc "userId" userId
     ~> jsonEmptyObject
 
 data WikiPage = WikiPage String
@@ -47,15 +46,19 @@ data WikiPage = WikiPage String
 instance encodeHTMLWikiPage :: EncodeHTML WikiPage where
   encodeHTML (WikiPage title) = text ("Viewing page: " <> title)
 
+type UsersRoutes =
+  "user" := Capture "user-id" UserID :> ("profile" := "profile" :/ Resource (Get JSON User)
+                                         :<|>
+                                         "friends" := "friends" :/ Resource (Get JSON (Array User)))
+
 type TestSite =
-  Get (HTML :<|> JSON) Home
+  "home" := Resource (Get (HTML :<|> JSON) Home)
   -- nested routes with capture
-  :<|> "users" :/ Capture "user-id" UserID :> ("profile" :/ Get JSON User
-                                               :<|> "friends" :/ Get JSON (Array User))
+  :<|> "users" := "users" :/ UsersRoutes
   -- capture all
-  :<|> "wiki" :/ CaptureAll "segments" String :> Get HTML WikiPage
+  :<|> "wiki" := "wiki" :/ CaptureAll "segments" String :> Resource (Get HTML WikiPage)
   -- raw middleware
-  :<|> "about" :/ Raw "GET"
+  :<|> "about" := "about" :/ Raw "GET"
 
 testSite :: Proxy TestSite
 testSite = Proxy

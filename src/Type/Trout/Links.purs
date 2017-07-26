@@ -6,6 +6,7 @@ module Type.Trout.Links
        ) where
 
 import Prelude
+import Type.Trout.Record as Record
 import Data.Array (singleton, unsnoc)
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
@@ -17,9 +18,10 @@ import Data.Path.Pathy (dir, file, rootDir, (</>))
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Data.URI (HierarchicalPart(..), URI(..))
 import Type.Proxy (Proxy(..))
-import Type.Trout (type (:<|>), type (:>), Capture, CaptureAll, Resource, Lit, Raw, (:<|>))
+import Type.Trout (type (:<|>), type (:=), type (:>), Capture, CaptureAll, Lit, Raw, Resource)
 import Type.Trout.PathPiece (class ToPathPiece, toPathPiece)
 
+-- | A link, containing zero or more path segments.
 newtype Link = Link (Array String)
 
 instance monoidLink :: Monoid Link where
@@ -47,8 +49,9 @@ linkToURI (Link segments) =
         Nothing ->
           Left rootDir
 
-class HasLinks e mk | e -> mk where
-  toLinks :: Proxy e -> Link -> mk
+-- | A routing type `t` which has links of type `links`.
+class HasLinks t links | t -> links where
+  toLinks :: Proxy t -> Link -> links
 
 instance hasLinksLit :: (HasLinks sub subMk, IsSymbol lit)
                        => HasLinks (Lit lit :> sub) subMk where
@@ -67,16 +70,35 @@ instance hasLinksCaptureAll :: (HasLinks sub subMk, IsSymbol c, ToPathPiece t)
   toLinks _ l =
     toLinks (Proxy :: Proxy sub) <<< append l <<< Link <<< map toPathPiece
 
-instance hasLinksResource :: HasLinks (Resource ms cts) URI where
+instance hasLinksResource :: HasLinks (Resource ms) URI where
   toLinks _ = linkToURI
 
 instance hasLinksRaw :: HasLinks (Raw m) URI where
   toLinks _ = linkToURI
 
-instance hasLinksAltE :: (HasLinks e1 mk1, HasLinks e2 mk2) => HasLinks (e1 :<|> e2) (mk1 :<|> mk2) where
+instance hasLinksAlt :: ( HasLinks t1 mk1
+                        , HasLinks t2 (Record mk2)
+                        , IsSymbol name
+                        , RowCons name mk1 mk2 links
+                        )
+                        => HasLinks (name := t1 :<|> t2) (Record links) where
   toLinks _ link =
-    toLinks (Proxy :: Proxy e1) link
-    :<|> toLinks (Proxy :: Proxy e2) link
+    Record.insert
+    (SProxy :: SProxy name)
+    (toLinks (Proxy :: Proxy t1) link)
+    (toLinks (Proxy :: Proxy t2) link)
 
-linksTo :: forall e t. HasLinks e t => Proxy e -> t
-linksTo e = toLinks e mempty
+instance hasLinksNamed :: ( HasLinks t mk
+                          , IsSymbol name
+                          , RowCons name mk () out
+                          )
+                          => HasLinks (name := t) (Record out) where
+  toLinks _ link =
+    Record.insert
+    (SProxy :: SProxy name)
+    (toLinks (Proxy :: Proxy t) link)
+    {}
+
+-- | Derive links for the type `t`.
+linksTo :: forall t links. HasLinks t links => Proxy t -> links
+linksTo x = toLinks x mempty

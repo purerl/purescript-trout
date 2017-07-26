@@ -8,11 +8,14 @@ module Type.Trout
        , Raw
        , Sub
        , LitSub
-       , AltE(..)
+       , Alt(..)
+       , Named
+       , QueryParam
+       , QueryParams
        , type (:>)
        , type (:/)
        , type (:<|>)
-       , (:<|>)
+       , type (:=)
        ) where
 
 -- | A literal path segment, matching paths where the next segment is equal
@@ -27,18 +30,18 @@ data Lit (v :: Symbol)
 data Capture (v :: Symbol) t
 
 -- | Captures all remaining segments of a path, all as type `t`. The `v`
--- | is a `Symbol` that describes
+-- | is a `Symbol` that describes the captured value.
 data CaptureAll (v :: Symbol) t
 
--- | A type-level description of the HTTP resource `r`, terminating a chain of
+-- | A type-level description of an HTTP resource, terminating a chain of
 -- | path literals, captures, and other endpoint type constructs. The `ms` are
--- | the methods handled by this resource. `cts` are the content types that
--- | this resource supports.
-data Resource ms cts
+-- | the methods handled by this resource.
+data Resource ms
 
--- | The `m` symbol is the HTTP method that is handled, and `r` is the
--- | response representation.
-data Method (m :: Symbol) r
+-- | The `m` symbol is the HTTP method that is handled, `r` is the
+-- | response representation (usually some type specific to the application
+-- | domain,) and `cts` are the content types supported.
+data Method (m :: Symbol) r cts
 
 -- | A type-level description of a raw middleware, terminating a chain of path
 -- | literals, captures, and other endpoint type constructs. The `m` symbol is
@@ -55,20 +58,25 @@ data Sub e t
 -- | `"a" :/ "b" :/ ...`.
 type LitSub (v :: Symbol) t = Sub (Lit v) t
 
--- | `AltE` respresents choice, i.e. that endpoint `a` is tried first, and if
--- | it fails, `b` is tried next. `AltE` is written infix using `:<|>` and is
--- | used to compose multiple endpoint types into a larger API or site. It is
--- | used to build up recursive structures, so `AltE a (AltE b c)` can be
--- | written `a :<|> b :<|> c`.
--- |
--- | It it also used to extract information from a type, where the information
--- | has the same structure as the type. For instance, when extracting links
--- | from an `AltE` type, you can pattern match the result using `:<|>`
--- | to access the links of `a` and `b`. That also works recursively with a
--- | pattern match like `a :<|> b :<|> c :<|> d`.
-data AltE a b = AltE a b
+-- | `Alt` represents choice, i.e. that endpoint `a` is tried first, and if
+-- | it fails, `b` is tried next. `Alt` is written infix using `:<|>` and is
+-- | used to compose multiple endpoint types into a larger API or site. Using
+-- | the infix operator, `Alt a (Alt b c)` can be written `a :<|> b :<|> c`.
+data Alt a b
 
-infixr 5 type Sub as :>
-infixr 5 type LitSub as :/
-infixl 4 type AltE as :<|>
-infixl 4 AltE as :<|>
+-- | `Named` associates some routing type `t` with a `name` symbol. This is
+-- | used to give names to combined routes in a routing type.
+data Named (name :: Symbol) t
+
+-- | Captures the first value of the query string parameter, or `Nothing`. `t`
+-- | is the type of the value. `k` is the name of the key as a `Symbol`.
+data QueryParam (k :: Symbol) t
+
+-- | Captures all values of the query string parameter, or `[]`. `t` is the
+-- | type of the value. `k` is the name of the key as a `Symbol`.
+data QueryParams (k :: Symbol) t
+
+infixr 9 type Sub as :>
+infixr 9 type LitSub as :/
+infixr 8 type Named as :=
+infixr 7 type Alt as :<|>
